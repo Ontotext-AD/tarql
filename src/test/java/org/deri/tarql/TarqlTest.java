@@ -73,7 +73,37 @@ public class TarqlTest {
 		List<Var> vars = vars("a", "b");
 		assertSelect(tq, binding(vars, "\"Alice\"", "\"Smith\""), binding(vars, "\"Bob\"", "\"Cook\""));
 	}
-	
+	@Test
+	public void testConstructWithGeneratedIRI() throws IOException {
+		options = new CSVOptions();
+		options.setColumnNamesInFirstRow(true);
+
+		csv =
+				"id,name,age\n" +
+						"1,Alice,25\n" +
+						"2,Bob,31";
+
+		String query =
+				"PREFIX ex: <http://example.com/>\n" +
+						"CONSTRUCT {\n" +
+						"  ?person a ex:Person ;\n" +
+						"          ex:name ?name ;\n" +
+						"          ex:age ?age .\n" +
+						"}\n" +
+						"{\n" +
+						"  BIND(IRI(CONCAT(\"http://example.com/person/\", ?id)) AS ?person)\n" +
+						"}";
+
+		TarqlQuery tq = new TarqlParser(new StringReader(query), null).getResult();
+
+		String ttl =
+				"@prefix ex: <http://example.com/>.\n" +
+						"<http://example.com/person/1> a ex:Person ; ex:name \"Alice\" ; ex:age \"25\".\n" +
+						"<http://example.com/person/2> a ex:Person ; ex:name \"Bob\" ; ex:age \"31\".\n";
+
+		assertConstruct(tq, ttl);
+	}
+
 	@Test
 	public void testSkipFirstRows() throws IOException {
 		options = new CSVOptions();
