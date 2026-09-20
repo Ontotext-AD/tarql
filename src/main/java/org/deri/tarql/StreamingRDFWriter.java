@@ -4,6 +4,8 @@ import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.apache.jena.sparql.core.Quad;
+
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.system.RiotLib;
@@ -30,11 +32,17 @@ import org.apache.jena.sparql.util.Context;
 public class StreamingRDFWriter {
 	private final OutputStream out;
 	private final Iterator<Triple> triples;
+	private Iterator<Quad> quads;
 	private int dedupWindowSize = 10000;
 	
 	public StreamingRDFWriter(OutputStream out, Iterator<Triple> triples) {
 		this.out = out;
 		this.triples = triples;
+	}
+	public StreamingRDFWriter(OutputStream out, Iterator<Quad> quads, boolean quadMode) {
+		this.out = out;
+		this.triples = null;
+		this.quads = quads;
 	}
 
 	public void setDedupWindowSize(int newSize) {
@@ -76,7 +84,23 @@ public class StreamingRDFWriter {
 		StreamRDFOps.sendTriplesToStream(triples, writer);
 		writer.finish();
 	}
-	
+	public void writeTriG(String baseIRI, PrefixMapping prefixes) {
+		StreamRDF writer = new WriterStreamRDFBlocks(out, new Context());
+
+		if (dedupWindowSize > 0) {
+			writer = new StreamRDFDedup(writer, dedupWindowSize);
+		}
+
+		writer.start();
+		writer.base(baseIRI);
+
+		for (Entry<String, String> e : prefixes.getNsPrefixMap().entrySet()) {
+			writer.prefix(e.getKey(), e.getValue());
+		}
+
+		StreamRDFOps.sendQuadsToStream(quads, writer);
+		writer.finish();
+	}
 	private PrefixMapping ensureRDFPrefix(PrefixMapping prefixes) {
 		// Some prefix already registered for the RDF namespace -- good enough
 		if (prefixes.getNsURIPrefix(RDF.getURI()) != null) return prefixes;
