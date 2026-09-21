@@ -13,6 +13,9 @@ import java.util.Set;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 
@@ -379,5 +382,62 @@ public class TarqlTest {
 		assertSelect(tq, 
 				binding(vars, "'tarql'", "<http://tarql.github.io/tarql#>"), 
 				binding(vars, "'apf'", "<http://jena.apache.org/ARQ/property#>"));
+	}
+	@Test
+	public void testExternalPositions() throws IOException {
+		String mappingPath = "test/db-shacl-tarql/tarql/tarql_positions.sparql";
+		String csvPath = "test/db-shacl-tarql/csv/positions.csv";
+		String expectedPath = "test/db-shacl-tarql/ttl-expected/positions_output.ttl";
+
+		String csvContent = Files.readString(Path.of(csvPath));
+		String expectedTTL = Files.readString(Path.of(expectedPath));
+
+		options = new CSVOptions();
+		options.setColumnNamesInFirstRow(true);
+		csv = csvContent;
+
+		TarqlQuery tq = new TarqlParser(mappingPath).getResult();
+
+		assertConstruct(tq, expectedTTL);
+	}
+	@Test
+	public void testExternalHobbitsUnstructured() throws IOException {
+		String mappingPath = "test/sparql-with-hobbits/tarql/convert_farming_csv_unstructured.rq";
+		String csvPath = "test/sparql-with-hobbits/csv/farming.csv";
+		String expectedPath = "test/sparql-with-hobbits/ttl-expected/farming_unstructured.rdf";
+
+		String csvContent = Files.readString(Path.of(csvPath));
+		String expectedTTL = Files.readString(
+				Path.of(expectedPath),
+				StandardCharsets.UTF_16
+		);
+
+		options = new CSVOptions();
+		options.setColumnNamesInFirstRow(true);
+		csv = csvContent;
+
+		TarqlQuery tq = new TarqlParser(mappingPath).getResult();
+
+		assertConstruct(tq, expectedTTL);
+	}
+	@Test
+	public void testExternalHobbitsStructured() throws IOException {
+		String mappingPath = "test/sparql-with-hobbits/tarql/convert_farming_csv_structured.rq";
+		String csvPath = "test/sparql-with-hobbits/csv/farming.csv";
+		String expectedPath = "test/sparql-with-hobbits/ttl-expected/farming_structured.rdf";
+
+		String csvContent = Files.readString(Path.of(csvPath));
+		String expectedTTL = Files.readString(
+				Path.of(expectedPath),
+				StandardCharsets.UTF_16
+		);
+
+		options = new CSVOptions();
+		options.setColumnNamesInFirstRow(true);
+		csv = csvContent;
+
+		TarqlQuery tq = new TarqlParser(mappingPath).getResult();
+
+		assertConstruct(tq, expectedTTL);
 	}
 }
