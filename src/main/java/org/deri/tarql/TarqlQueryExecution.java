@@ -3,6 +3,7 @@ package org.deri.tarql;
 import java.io.IOException;
 import java.util.Iterator;
 
+import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -139,6 +140,21 @@ public class TarqlQueryExecution {
 			result = result.andThen(ex.execConstructTriples());
 		}
 		return result;
+	}
+	public Iterator<Quad> execQuads() throws IOException {
+		Model model = ModelFactory.createDefaultModel();
+		java.util.List<Iterator<Quad>> iterators = new java.util.ArrayList<>();
+
+		for (Query q: tq.getQueries()) {
+			modifyQuery(q, table);
+			QueryExecution ex = createQueryExecution(q, model);
+			iterators.add(ex.execConstructQuads());
+		}
+
+		return iterators.stream()
+				.flatMap(it -> java.util.stream.StreamSupport.stream(
+						java.util.Spliterators.spliteratorUnknownSize(it, 0), false))
+				.iterator();
 	}
 	
 	public ResultSet execSelect() {
