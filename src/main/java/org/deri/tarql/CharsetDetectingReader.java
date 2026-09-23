@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.SequenceInputStream;
 import java.io.UnsupportedEncodingException;
 
 import org.mozilla.intl.chardet.nsDetector;
@@ -15,94 +16,96 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link Reader} that wraps an {@link InputStream} and automatically takes
  * care of guessing the input stream's encoding, using the jchardet library.
- * Guessing is done on the fly without rewinding.
  */
 public class CharsetDetectingReader extends Reader {
-	private final static Logger log = LoggerFactory.getLogger(CharsetDetectingReader.class);
-	
-	private final static int DEFAULT_BUFFER_SIZE = 1024;
-	private final static int EOF = -1;
-	
+	private static final Logger log = LoggerFactory.getLogger(CharsetDetectingReader.class);
+
+	private static final int DEFAULT_BUFFER_SIZE = 1024;
+
 	private final InputStream in;
-	private final byte[] buffer;
-	private final nsDetector detector = new nsDetector();
-	private Reader reader = null;
-	private boolean encodingDetected = false;
-	private String detectedEncoding = null;
-	private String guessedEncoding = null;
-	
+	private final int bufferSize;
+
+	private Reader reader;
+
 	public CharsetDetectingReader(InputStream in) {
 		this(in, DEFAULT_BUFFER_SIZE);
 	}
 
 	public CharsetDetectingReader(InputStream in, int bufferSize) {
-		if (in == null) throw new NullPointerException();
+		if (in == null) {
+			throw new NullPointerException();
+		}
 		this.in = in;
-		buffer = new byte[bufferSize];
-		detector.Init(new nsICharsetDetectionObserver() {
-			public void Notify(String encoding) {
-				log.debug("Encoding detected: {}", encoding);
-				detectedEncoding = encoding;
-			}
-		});
+		this.bufferSize = bufferSize;
 	}
 
 	@Override
 	public int read(char[] cbuf, int off, int len) throws IOException {
-		if (len == 0 || cbuf.length == 0) return 0;
-		int charsReadTotal = 0;
-		while (len > 0) {
-			if (reader == null && !fillBuffer()) {
-				return charsReadTotal > 0 ? charsReadTotal : EOF;
-			}
-			int charsRead = reader.read(cbuf, off, len);
-			if (charsRead == -1) {
-				reader = null;
-				continue;
-			}
-			off += charsRead;
-			len -= charsRead;
-			charsReadTotal += charsRead;
+		if (reader == null) {
+			initializeReader();
 		}
-		return charsReadTotal;
+		return reader.read(cbuf, off, len);
 	}
-	
+
 	@Override
 	public void close() throws IOException {
-		in.close();
-	}
-	
-	private boolean fillBuffer() throws IOException {
-		int bytesRead = in.read(buffer);
-		if (bytesRead == EOF) {
-			detector.DataEnd();
-			return false;
+		if (reader != null) {
+			reader.close();
+		} else {
+			in.close();
 		}
-		if (!encodingDetected) {
-			// If it's all ASCII, then just proceed
-			if (!detector.isAscii(buffer, bytesRead)) {
-				encodingDetected = detector.DoIt(buffer, bytesRead, false);
-				if (!encodingDetected) {
-					// Best guess up to here. Might be revised next block.
-					String[] guesses = detector.getProbableCharsets();
-					guessedEncoding = guesses.length > 0 ? guesses[0] : null;
-					if (guessedEncoding != null) {
-						log.debug("Temporary encoding guess: {}", guessedEncoding);
-					}
-				}
+	}
+
+	private void initializeReader() throws IOException {
+		byte[] buffer = new byte[bufferSize];
+		int bytesRead = in.read(buffer);
+
+		if (bytesRead == -1) {
+			reader = new InputStreamReader(
+					new ByteArrayInputStream(new byte[0]), "US-ASCII");
+			return;
+		}
+
+		final String[] detectedEncoding = new String[1];
+		nsDetector detector = new nsDetector();
+
+		detector.Init(new nsICharsetDetectionObserver() {
+			@Override
+			public void Notify(String encoding) {
+				log.debug("Encoding detected: {}", encoding);
+				detectedEncoding[0] = encoding;
+			}
+		});
+
+		if (!detector.isAscii(buffer, bytesRead)) {
+			detector.DoIt(buffer, bytesRead, false);
+		}
+		detector.DataEnd();
+
+		String encoding = detectedEncoding[0];
+
+		if (encoding == null) {
+			String[] guesses = detector.getProbableCharsets();
+			if (guesses.length > 0) {
+				encoding = guesses[0];
 			}
 		}
-		InputStream in = new ByteArrayInputStream(buffer, 0, bytesRead);
-		try {
-			reader = new InputStreamReader(in, 
-					detectedEncoding == null
-							? (guessedEncoding == null ? "US-ASCII" : guessedEncoding)
-							: detectedEncoding);
-		} catch (UnsupportedEncodingException ex) {
-			// Fall back to US-ASCII
-			detectedEncoding = "US-ASCII";
-			reader = new InputStreamReader(in, detectedEncoding);
+
+		if (encoding == null) {
+			encoding = "US-ASCII";
 		}
-		return true;
+
+		log.debug("Using encoding: {}", encoding);
+
+		InputStream completeStream = new SequenceInputStream(
+				new ByteArrayInputStream(buffer, 0, bytesRead),
+				in);
+
+		try {
+			reader = new InputStreamReader(completeStream, encoding);
+		} catch (UnsupportedEncodingException ex) {
+			log.debug("Unsupported encoding {}, falling back to US-ASCII", encoding);
+			reader = new InputStreamReader(completeStream, "US-ASCII");
+		}
 	}
 }

@@ -35,7 +35,7 @@ public class CharsetDetectingReaderTest {
 	public void testDetectISO_8859_1() throws IOException {
 		assertEquals("Sp\u00E4tzle", read("Sp\u00E4tzle".getBytes("ISO-8859-1"), 100, 100));
 	}
-	
+	@Test
 	public void testUTF8CharacterOnBlockBoundary() throws IOException {
 		assertEquals("Sp\u00E4tzle", read("Sp\u00E4tzle".getBytes("UTF-8"), 3, 100));
 		assertEquals("Sp\u00E4tzle", read("Sp\u00E4tzle".getBytes("UTF-8"), 100, 3));
