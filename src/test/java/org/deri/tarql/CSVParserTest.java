@@ -194,6 +194,7 @@ public class CSVParserTest {
 				removePseudoVars(readCSV(csv, true, '\\').next()));
 	}
 
+
 	/* OpenCSV only uses the escape character for quotes, not for delimiters */
 	//@Test
 	public void testEscapingDelimiterWithBackslash() throws IOException {
@@ -201,7 +202,28 @@ public class CSVParserTest {
 		assertEquals(binding(vars("Value"), "\"This, too\""), 
 				removePseudoVars(readCSV(csv, true, '\\').next()));
 	}
-	
+	@Test
+	public void testSkipCommentLines() throws IOException {
+		String csv = "# comment before header\n"
+				+ "X,Y\n"
+				+ "1,2\n"
+				+ "# comment between rows\n"
+				+ "3,4";
+
+		CSVParser parser = new CSVParser(
+				new StringReader(csv), true, ',', '"', null, "#");
+
+		assertEquals(vars("X", "Y"),
+				parser.getVars().subList(0, 2));
+
+		int count = 0;
+		while (parser.hasNext()) {
+			parser.next();
+			count++;
+		}
+
+		assertEquals(2, count);
+	}
 	private static CSVParser readCSV(String csv, boolean varsFromHeader) throws IOException {
 		return new CSVParser(new StringReader(csv), varsFromHeader, null, '"', null);
 	}

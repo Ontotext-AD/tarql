@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.BufferedReader;
 
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.NodeFactory;
@@ -40,6 +41,7 @@ public class CSVParser implements ClosableIterator<Binding> {
 
 	private final static String alphabet = "abcdefghijklmnopqrstuvwxyz";
 
+	private final String commentPrefix;
 	private final Reader reader;
 	private final boolean varsFromHeader;
 	private final char delimiter;
@@ -64,7 +66,13 @@ public class CSVParser implements ClosableIterator<Binding> {
 	 *            The escape character for quotes and delimiters, or <code>null</code> for none 
 	 * @throws IOException if an I/O error occurs while reading from the input
 	 */
-	public CSVParser(Reader reader, boolean varsFromHeader, Character delimiter, Character quote, Character escape)
+	public CSVParser(Reader reader, boolean varsFromHeader, Character delimiter,
+					 Character quote, Character escape) throws IOException {
+		this(reader, varsFromHeader, delimiter, quote, escape, null);
+	}
+
+	public CSVParser(Reader reader, boolean varsFromHeader, Character delimiter,
+					 Character quote, Character escape, String commentPrefix)
 			throws IOException {
 		this.reader = reader;
 		this.varsFromHeader = varsFromHeader;
@@ -73,7 +81,9 @@ public class CSVParser implements ClosableIterator<Binding> {
 		this.quote = quote == null ? '\0' : quote;
 		// OpenCSV insists on an escape character
 		this.escape = escape == null ? '\0' : escape;
+		this.commentPrefix = commentPrefix;
 		init();
+
 	}
 
 	private Var toVar(String s) {
@@ -206,10 +216,48 @@ public class CSVParser implements ClosableIterator<Binding> {
 		varsWithRowNum.add(TarqlQuery.ROWNUM);
 		return varsWithRowNum;
 	}
-	
+	private Reader commentFilteringReader() {
+		if (commentPrefix == null) {
+			return reader;
+		}
+
+		BufferedReader buffered = new BufferedReader(reader);
+
+		return new Reader() {
+			private String pending = "";
+
+			@Override
+			public int read(char[] cbuf, int off, int len) throws IOException {
+				while (pending.isEmpty()) {
+					String line = buffered.readLine();
+
+					if (line == null) {
+						return -1;
+					}
+
+					if (line.startsWith(commentPrefix)) {
+
+						continue;
+					}
+
+					pending = line + "\n";
+				}
+
+				int count = Math.min(len, pending.length());
+				pending.getChars(0, count, cbuf, off);
+				pending = pending.substring(count);
+				return count;
+			}
+
+			@Override
+			public void close() throws IOException {
+				buffered.close();
+			}
+		};
+	}
 	private void init() throws IOException {
 		String[] row;
-		csv = new CSVReaderBuilder(reader).withCSVParser(
+		csv = new CSVReaderBuilder(commentFilteringReader()).withCSVParser(
 				new CSVParserBuilder()
 						.withSeparator(delimiter)
 						.withQuoteChar(quote)
