@@ -78,41 +78,7 @@ public class TarqlTest {
 		List<Var> vars = vars("a", "b");
 		assertSelect(tq, binding(vars, "\"Alice\"", "\"Smith\""), binding(vars, "\"Bob\"", "\"Cook\""));
 	}
-	@Test
-	public void testCyrillicOstavka() throws IOException {
 
-
-		StringBuilder input = new StringBuilder();
-		for (int i = 0; i < 1000; i++) {
-			input.append("foo,оставка\n");
-		}
-		csv = input.toString();
-
-		String query =
-				"PREFIX : <http://example.org/>\n" +
-						"CONSTRUCT {\n" +
-						"    ?URI :label ?b\n" +
-						"}\n" +
-						"WHERE {\n" +
-						"    BIND(IRI(CONCAT(STR(:), ?a)) AS ?URI)\n" +
-						"}";
-
-		TarqlQuery tq = new TarqlParser(new StringReader(query), null).getResult();
-
-		TarqlQueryExecution ex = TarqlQueryExecutionFactory.create(
-				tq,
-				InputStreamSource.fromBytes(csv.getBytes("utf-8")),
-				options);
-
-		Model actual = ModelFactory.createDefaultModel();
-		ex.exec(actual);
-
-		Resource subject = actual.createResource("http://example.org/foo");
-		Property label = actual.createProperty("http://example.org/label");
-
-		assertTrue(actual.contains(subject, label, "оставка"));
-		assertEquals(1, actual.size());
-	}
 	@Test
 	public void testConstructWithGeneratedIRI() throws IOException {
 		options = new CSVOptions();

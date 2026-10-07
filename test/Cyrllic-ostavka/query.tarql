@@ -1,0 +1,8 @@
+PREFIX : <http://example.org/>
+
+CONSTRUCT {
+    ?URI :label ?b
+}
+WHERE {
+    BIND(URI(CONCAT(STR(:), ?a)) AS ?URI)
+}
