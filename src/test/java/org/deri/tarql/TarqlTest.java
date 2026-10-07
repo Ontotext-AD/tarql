@@ -1,29 +1,28 @@
 package org.deri.tarql;
 
-import static org.deri.tarql.Helpers.binding;
-import static org.deri.tarql.Helpers.vars;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.sparql.core.Quad;
-
-import java.util.HashSet;
-import java.util.Set;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.List;
-
-
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.shared.JenaException;
+import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.engine.binding.Binding;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.deri.tarql.Helpers.binding;
+import static org.deri.tarql.Helpers.vars;
+import static org.junit.Assert.*;
 
 
 
@@ -79,6 +78,7 @@ public class TarqlTest {
 		List<Var> vars = vars("a", "b");
 		assertSelect(tq, binding(vars, "\"Alice\"", "\"Smith\""), binding(vars, "\"Bob\"", "\"Cook\""));
 	}
+
 	@Test
 	public void testConstructWithGeneratedIRI() throws IOException {
 		options = new CSVOptions();
