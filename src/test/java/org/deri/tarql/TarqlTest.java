@@ -279,23 +279,7 @@ public class TarqlTest {
 		String ttl = "@prefix ex: <http://example.com/>. _:x ex:first \"Alice\". _:y ex:last \"Smith\".";
 		assertConstruct(tq, ttl);
 	}
-	@Test
-	public void testBaseCarriesOverToSubsequentConstructQueries() throws IOException {
-		csv = "id\nfirst\nsecond";
 
-		String query =
-				"BASE <http://example.com/base/>\n" +
-						"CONSTRUCT { <first> <http://example.com/value> \"one\" } WHERE {}\n" +
-						"CONSTRUCT { <second> <http://example.com/value> \"two\" } WHERE {}\n";
-
-		TarqlQuery tq = new TarqlParser(new StringReader(query), null).getResult();
-
-		String ttl =
-				"<http://example.com/base/first> <http://example.com/value> \"one\" .\n" +
-						"<http://example.com/base/second> <http://example.com/value> \"two\" .";
-
-		assertConstruct(tq, ttl);
-	}
 	@Test
 	public void testFROMisRelativeToMappingLocation1() throws IOException {
 		String file = "src/test/resources/mappings/simple-with-from.sparql";

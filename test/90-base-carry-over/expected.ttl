@@ -1,0 +1,2 @@
+﻿<http://example.com/base/first> <http://example.com/value> "one" .
+<http://example.com/base/second> <http://example.com/value> "two" .

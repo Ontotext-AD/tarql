@@ -1,0 +1,11 @@
+BASE <http://example.com/base/>
+
+CONSTRUCT {
+  <first> <http://example.com/value> "one"
+}
+WHERE {}
+
+CONSTRUCT {
+  <second> <http://example.com/value> "two"
+}
+WHERE {}
