@@ -279,7 +279,7 @@ public class TarqlTest {
 		String ttl = "@prefix ex: <http://example.com/>. _:x ex:first \"Alice\". _:y ex:last \"Smith\".";
 		assertConstruct(tq, ttl);
 	}
-	
+
 	@Test
 	public void testFROMisRelativeToMappingLocation1() throws IOException {
 		String file = "src/test/resources/mappings/simple-with-from.sparql";
