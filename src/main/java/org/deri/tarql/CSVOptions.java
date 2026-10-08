@@ -36,7 +36,7 @@ public class CSVOptions {
 		result.setDefaultsForTSV();
 		return result;
 	}
-	
+	private String commentPrefix = null;
 	private String encoding = null;
 	private Boolean columnNamesInFirstRow = null;
 	private boolean hasExplicitDelimiter = false; 
@@ -80,6 +80,9 @@ public class CSVOptions {
 		}
 		if (other.encoding != null) {
 			this.encoding = other.encoding;
+		}
+		if (other.commentPrefix != null) {
+			this.commentPrefix = other.commentPrefix;
 		}
 		if (other.columnNamesInFirstRow != null) {
 			this.columnNamesInFirstRow = other.columnNamesInFirstRow;
@@ -138,7 +141,24 @@ public class CSVOptions {
 	public String getEncoding() {
 		return encoding;
 	}
-	
+	/**
+	 * Sets the prefix used to identify comment lines.
+	 * A null value disables comment line processing.
+	 *
+	 * @param commentPrefix The comment prefix, or null to disable
+	 */
+	public void setCommentPrefix(String commentPrefix) {
+		this.commentPrefix = commentPrefix;
+	}
+
+	/**
+	 * Returns the prefix used to identify comment lines.
+	 *
+	 * @return The comment prefix, or null if comment processing is disabled
+	 */
+	public String getCommentPrefix() {
+		return commentPrefix;
+	}
 	/**
 	 * Set whether the CSV file's first row contains column names.
 	 * <code>null</code> means unknown.
@@ -235,7 +255,7 @@ public class CSVOptions {
 	public CSVParser openParserFor(InputStreamSource source) throws IOException {
 		return new CSVParser(openReaderFor(source), 
 				columnNamesInFirstRow == null ? true : columnNamesInFirstRow,
-				delimiter, quote, escape);
+				delimiter, quote, escape, commentPrefix);
 	}
 	
 	/**
