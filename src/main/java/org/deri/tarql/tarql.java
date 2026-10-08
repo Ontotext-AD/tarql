@@ -265,11 +265,20 @@ public class tarql extends CmdMain {
 	}
 	
 	private void processResults(TarqlQueryExecution ex) throws IOException {
-		if (testQuery && ex.getFirstQuery().getConstructTemplate() != null) {
-			IndentedWriter out = new IndentedWriter(System.out); 
-			new FmtTemplate(out, new SerializationContext(ex.getFirstQuery())).format(ex.getFirstQuery().getConstructTemplate());
-			out.flush();
+		if (testQuery) {
+			for (org.apache.jena.query.Query q : ex.getQueries()) {
+				if (q.getConstructTemplate() != null) {
+					IndentedWriter out = new IndentedWriter(System.out);
+					new FmtTemplate(out, new SerializationContext(q))
+							.format(q.getConstructTemplate());
+					out.flush();
+				}
+
+				System.out.println(ResultSetFormatter.asText(ex.execSelect(q)));
+			}
+			return;
 		}
+
 		if (ex.getFirstQuery().isSelectType()) {
 			System.out.println(ResultSetFormatter.asText(ex.execSelect()));
 		} else if (ex.getFirstQuery().isAskType()) {
