@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
-import java.io.BufferedReader;
 
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.NodeFactory;
@@ -217,41 +216,128 @@ public class CSVParser implements ClosableIterator<Binding> {
 		return varsWithRowNum;
 	}
 	private Reader commentFilteringReader() {
-		if (commentPrefix == null) {
+		if (commentPrefix == null || commentPrefix.isEmpty()) {
 			return reader;
 		}
 
-		BufferedReader buffered = new BufferedReader(reader);
-
 		return new Reader() {
-			private String pending = "";
+			private final java.io.PushbackReader input =
+					new java.io.PushbackReader(reader, commentPrefix.length() + 2);
+			private boolean inQuotes = false;
+			private boolean atLineStart = true;
 
 			@Override
 			public int read(char[] cbuf, int off, int len) throws IOException {
-				while (pending.isEmpty()) {
-					String line = buffered.readLine();
+				if (len == 0) {
+					return 0;
+				}
 
-					if (line == null) {
-						return -1;
+				int count = 0;
+
+				while (count < len) {
+					int ch = readNext();
+
+					if (ch == -1) {
+						return count == 0 ? -1 : count;
 					}
 
-					if (line.startsWith(commentPrefix)) {
+					cbuf[off + count] = (char) ch;
+					count++;
+				}
 
+				return count;
+			}
+
+			private int readNext() throws IOException {
+				while (true) {
+					if (atLineStart && !inQuotes && startsWithCommentPrefix()) {
+						skipCommentLine();
 						continue;
 					}
 
-					pending = line + "\n";
+					int ch = input.read();
+					if (ch == -1) {
+						return -1;
+					}
+
+					if (ch == quote && quote != '\0') {
+						if (inQuotes) {
+							int next = input.read();
+
+							if (next == quote) {
+								input.unread(next);
+							} else {
+								inQuotes = false;
+
+								if (next != -1) {
+									input.unread(next);
+								}
+							}
+						} else {
+							inQuotes = true;
+						}
+					}
+
+					if (ch == '\n' || ch == '\r') {
+						atLineStart = true;
+					} else {
+						atLineStart = false;
+					}
+
+					return ch;
+				}
+			}
+
+			private boolean startsWithCommentPrefix() throws IOException {
+				char[] prefix = new char[commentPrefix.length()];
+				int read = 0;
+
+				while (read < prefix.length) {
+					int ch = input.read();
+
+					if (ch == -1) {
+						break;
+					}
+
+					prefix[read++] = (char) ch;
 				}
 
-				int count = Math.min(len, pending.length());
-				pending.getChars(0, count, cbuf, off);
-				pending = pending.substring(count);
-				return count;
+				for (int i = read - 1; i >= 0; i--) {
+					input.unread(prefix[i]);
+				}
+
+				if (read != prefix.length) {
+					return false;
+				}
+
+				return commentPrefix.equals(new String(prefix));
+			}
+
+			private void skipCommentLine() throws IOException {
+				int ch;
+
+				while ((ch = input.read()) != -1) {
+					if (ch == '\n') {
+						atLineStart = true;
+						return;
+					}
+
+					if (ch == '\r') {
+						int next = input.read();
+
+						if (next != '\n' && next != -1) {
+							input.unread(next);
+						}
+
+						atLineStart = true;
+						return;
+					}
+				}
 			}
 
 			@Override
 			public void close() throws IOException {
-				buffered.close();
+				input.close();
 			}
 		};
 	}

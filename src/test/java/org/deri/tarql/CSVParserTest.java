@@ -224,6 +224,24 @@ public class CSVParserTest {
 
 		assertEquals(2, count);
 	}
+	@Test
+	public void testCommentPrefixInsideMultilineQuotedField() throws IOException {
+		String csv = "X,Y\n"
+				+ "1,\"first line\n"
+				+ "# this is part of the field\n"
+				+ "last line\"\n"
+				+ "2,normal";
+
+		CSVParser parser = new CSVParser(
+				new StringReader(csv), true, ',', '"', null, "#");
+
+		assertEquals(
+				binding(
+						vars("X", "Y"),
+						"\"1\"",
+						"\"first line\\n# this is part of the field\\nlast line\""),
+				removePseudoVars(parser.next()));
+	}
 	private static CSVParser readCSV(String csv, boolean varsFromHeader) throws IOException {
 		return new CSVParser(new StringReader(csv), varsFromHeader, null, '"', null);
 	}
