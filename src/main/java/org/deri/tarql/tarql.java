@@ -94,7 +94,7 @@ public class tarql extends CmdMain {
 		getUsage().startCategory("Output options");
 		add(testQueryArg,     "--test", "Show CONSTRUCT template and first rows only (for query debugging)");
 		add(writeBaseArg,     "--write-base", "Write @base if output is Turtle");
-		add(nTriplesArg,      "--ntriples", "Write N-Triples instead of Turtle");
+		add(nTriplesArg,      "--ntriples", "Write N-Triples instead of Turtle (named graph output is written as TriG)");
 		add(dedupArg, "--dedup", "Window size in which to remove duplicate triples");
 
 		getUsage().startCategory("Input options");
