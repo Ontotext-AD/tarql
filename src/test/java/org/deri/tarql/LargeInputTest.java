@@ -185,6 +185,25 @@ public class LargeInputTest {
 		assertEquals(lines - 1, results);
 	}
 
+        @Test public void testMultipleVALUESStreaming() {
+                final int lines = 100000;
+                String query = "SELECT * { VALUES ?choice { 1 2 } }";
+                ResultSet rs = prepare(query, new DummyContentSource(lines)).execSelect();
+                assertEquals((lines - 1) * 2, consume(rs));
+        }
+        @Test public void testVALUESWithSharedCSVVariable() {
+                final int lines = 100000;
+                String query = "SELECT * { VALUES ?line { \"Line 2\" \"Line 3\" } }";
+                ResultSet rs = prepare(query, new DummyContentSource(lines)).execSelect();
+                assertEquals(2, consume(rs));
+        }
+        @Test public void testDodgyVALUESRegression() {
+                final int lines = 1000000;
+                String query = "SELECT * { VALUES ?undef { UNDEF } }";
+                ResultSet rs = prepare(query, new DummyContentSource(lines)).execSelect();
+                assertEquals(lines - 1, consume(rs));
+        }
+
 	@Ignore("This broke streaming in v1.1 but fixed by Jena upgrade in v1.2")
 	@Test public void testDodgyVALUES() {
 		System.out.println("testInput5GB");

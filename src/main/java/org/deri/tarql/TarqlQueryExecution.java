@@ -81,7 +81,7 @@ public class TarqlQueryExecution {
 			tableElement.add(var);
 		}
 		ElementGroup groupElement = new ElementGroup();
-		groupElement.addElement(tableElement);
+		
 		if (query.getQueryPattern() instanceof ElementGroup) {
 			for (Element element: ((ElementGroup) query.getQueryPattern()).getElements()) {
 				groupElement.addElement(element);
@@ -89,7 +89,23 @@ public class TarqlQueryExecution {
 		} else {
 			groupElement.addElement(query.getQueryPattern());
 		}
-		query.setQueryPattern(groupElement);
+		// Put a standalone VALUES clause before the CSV table to avoid buffering CSV rows.
+                boolean valuesOnly = false;
+                if (query.getQueryPattern() instanceof ElementData) {
+                        valuesOnly = true;
+                } else if (query.getQueryPattern() instanceof ElementGroup) {
+                        java.util.List<Element> elements =
+                                ((ElementGroup) query.getQueryPattern()).getElements();
+                        valuesOnly = elements.size() == 1
+                                && elements.get(0) instanceof ElementData;
+                }
+
+                if (valuesOnly) {
+                        groupElement.addElement(tableElement);
+                } else {
+                        groupElement.getElements().add(0, tableElement);
+                }
+                query.setQueryPattern(groupElement);
 		
 		// For SELECT * queries, we don't want to include pseudo
 		// columns such as ?ROWNUM that may exist in the table.
