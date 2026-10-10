@@ -3,6 +3,8 @@ package org.deri.tarql;
 import java.io.IOException;
 import java.util.Iterator;
 
+import org.apache.jena.sparql.syntax.ElementFilter;
+import org.apache.jena.sparql.syntax.ElementBind;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
@@ -81,7 +83,7 @@ public class TarqlQueryExecution {
 			tableElement.add(var);
 		}
 		ElementGroup groupElement = new ElementGroup();
-		groupElement.addElement(tableElement);
+		
 		if (query.getQueryPattern() instanceof ElementGroup) {
 			for (Element element: ((ElementGroup) query.getQueryPattern()).getElements()) {
 				groupElement.addElement(element);
@@ -89,6 +91,37 @@ public class TarqlQueryExecution {
 		} else {
 			groupElement.addElement(query.getQueryPattern());
 		}
+		// Put VALUES before the CSV table when it is safe to do so.
+		boolean valuesFirst = false;
+
+		if (query.getQueryPattern() instanceof ElementData) {
+			valuesFirst = true;
+		} else if (query.getQueryPattern() instanceof ElementGroup) {
+			java.util.List<Element> elements =
+					((ElementGroup) query.getQueryPattern()).getElements();
+
+			valuesFirst = elements.size() == 1
+					&& elements.get(0) instanceof ElementData;
+
+			if (elements.size() == 2
+					&& elements.get(0) instanceof ElementData
+					&& (elements.get(1) instanceof ElementBind
+					|| elements.get(1) instanceof ElementFilter)) {
+				valuesFirst = true;
+			}
+		}
+
+		if (valuesFirst) {
+			if (groupElement.getElements().size() > 1
+					&& groupElement.getElements().get(0) instanceof ElementData) {
+				groupElement.getElements().add(1, tableElement);
+			} else {
+				groupElement.addElement(tableElement);
+			}
+		} else {
+			groupElement.getElements().add(0, tableElement);
+		}
+
 		query.setQueryPattern(groupElement);
 		
 		// For SELECT * queries, we don't want to include pseudo
