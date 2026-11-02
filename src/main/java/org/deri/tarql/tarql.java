@@ -65,6 +65,7 @@ public class tarql extends CmdMain {
 	private final ArgDecl withHeaderArg = new ArgDecl(false, "header-row", "header");
 	private final ArgDecl withoutHeaderArg = new ArgDecl(false, "no-header-row", "no-header", "H");
 	private final ArgDecl encodingArg = new ArgDecl(true, "encoding", "e");
+	private final ArgDecl commentPrefixArg = new ArgDecl(true, "comment-prefix");
 	private final ArgDecl nTriplesArg = new ArgDecl(false, "ntriples");
 	private final ArgDecl delimiterArg = new ArgDecl(true, "delimiter", "d");
 	private final ArgDecl tabsArg = new ArgDecl(false, "tabs", "tab", "t");
@@ -104,6 +105,7 @@ public class tarql extends CmdMain {
 		add(quoteArg,         "--quotechar", "Quote character used in the input file, or \"none\"");
 		add(escapeArg,        "-p   --escapechar", "Character used to escape quotes in the input file, or \"none\"");
 		add(encodingArg,      "-e   --encoding", "Override input file encoding (e.g., utf-8 or latin-1)");
+		add(commentPrefixArg, "--comment-prefix", "Prefix for comment lines, or \"none\" to disable");
 		add(withoutHeaderArg, "-H   --no-header-row", "Input file has no header row; use variable names ?a, ?b, ...");
 		add(withHeaderArg,    "--header-row", "Input file's first row is a header with variable names (default)");
 		add(baseArg,          "--base", "Base IRI for resolving relative IRIs");
@@ -147,6 +149,15 @@ public class tarql extends CmdMain {
 		}
 		if (hasArg(encodingArg)) {
 			options.setEncoding(getValue(encodingArg));
+		}
+		if (hasArg(commentPrefixArg)) {
+
+			String prefix = getValue(commentPrefixArg);
+			if ("none".equalsIgnoreCase(prefix)) {
+				options.setCommentPrefix(null);
+			} else {
+				options.setCommentPrefix(prefix);
+			}
 		}
 		if (hasArg(nTriplesArg)) {
 			writeNTriples = true;

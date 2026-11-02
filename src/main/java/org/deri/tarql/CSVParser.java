@@ -40,6 +40,7 @@ public class CSVParser implements ClosableIterator<Binding> {
 
 	private final static String alphabet = "abcdefghijklmnopqrstuvwxyz";
 
+	private final String commentPrefix;
 	private final Reader reader;
 	private final boolean varsFromHeader;
 	private final char delimiter;
@@ -64,7 +65,13 @@ public class CSVParser implements ClosableIterator<Binding> {
 	 *            The escape character for quotes and delimiters, or <code>null</code> for none 
 	 * @throws IOException if an I/O error occurs while reading from the input
 	 */
-	public CSVParser(Reader reader, boolean varsFromHeader, Character delimiter, Character quote, Character escape)
+	public CSVParser(Reader reader, boolean varsFromHeader, Character delimiter,
+					 Character quote, Character escape) throws IOException {
+		this(reader, varsFromHeader, delimiter, quote, escape, null);
+	}
+
+	public CSVParser(Reader reader, boolean varsFromHeader, Character delimiter,
+					 Character quote, Character escape, String commentPrefix)
 			throws IOException {
 		this.reader = reader;
 		this.varsFromHeader = varsFromHeader;
@@ -73,7 +80,9 @@ public class CSVParser implements ClosableIterator<Binding> {
 		this.quote = quote == null ? '\0' : quote;
 		// OpenCSV insists on an escape character
 		this.escape = escape == null ? '\0' : escape;
+		this.commentPrefix = commentPrefix;
 		init();
+
 	}
 
 	private Var toVar(String s) {
@@ -206,10 +215,135 @@ public class CSVParser implements ClosableIterator<Binding> {
 		varsWithRowNum.add(TarqlQuery.ROWNUM);
 		return varsWithRowNum;
 	}
-	
+	private Reader commentFilteringReader() {
+		if (commentPrefix == null || commentPrefix.isEmpty()) {
+			return reader;
+		}
+
+		return new Reader() {
+			private final java.io.PushbackReader input =
+					new java.io.PushbackReader(reader, commentPrefix.length() + 2);
+			private boolean inQuotes = false;
+			private boolean atLineStart = true;
+
+			@Override
+			public int read(char[] cbuf, int off, int len) throws IOException {
+				if (len == 0) {
+					return 0;
+				}
+
+				int count = 0;
+
+				while (count < len) {
+					int ch = readNext();
+
+					if (ch == -1) {
+						return count == 0 ? -1 : count;
+					}
+
+					cbuf[off + count] = (char) ch;
+					count++;
+				}
+
+				return count;
+			}
+
+			private int readNext() throws IOException {
+				while (true) {
+					if (atLineStart && !inQuotes && startsWithCommentPrefix()) {
+						skipCommentLine();
+						continue;
+					}
+
+					int ch = input.read();
+					if (ch == -1) {
+						return -1;
+					}
+
+					if (ch == quote && quote != '\0') {
+						if (inQuotes) {
+							int next = input.read();
+
+							if (next == quote) {
+								input.unread(next);
+							} else {
+								inQuotes = false;
+
+								if (next != -1) {
+									input.unread(next);
+								}
+							}
+						} else {
+							inQuotes = true;
+						}
+					}
+
+					if (ch == '\n' || ch == '\r') {
+						atLineStart = true;
+					} else {
+						atLineStart = false;
+					}
+
+					return ch;
+				}
+			}
+
+			private boolean startsWithCommentPrefix() throws IOException {
+				char[] prefix = new char[commentPrefix.length()];
+				int read = 0;
+
+				while (read < prefix.length) {
+					int ch = input.read();
+
+					if (ch == -1) {
+						break;
+					}
+
+					prefix[read++] = (char) ch;
+				}
+
+				for (int i = read - 1; i >= 0; i--) {
+					input.unread(prefix[i]);
+				}
+
+				if (read != prefix.length) {
+					return false;
+				}
+
+				return commentPrefix.equals(new String(prefix));
+			}
+
+			private void skipCommentLine() throws IOException {
+				int ch;
+
+				while ((ch = input.read()) != -1) {
+					if (ch == '\n') {
+						atLineStart = true;
+						return;
+					}
+
+					if (ch == '\r') {
+						int next = input.read();
+
+						if (next != '\n' && next != -1) {
+							input.unread(next);
+						}
+
+						atLineStart = true;
+						return;
+					}
+				}
+			}
+
+			@Override
+			public void close() throws IOException {
+				input.close();
+			}
+		};
+	}
 	private void init() throws IOException {
 		String[] row;
-		csv = new CSVReaderBuilder(reader).withCSVParser(
+		csv = new CSVReaderBuilder(commentFilteringReader()).withCSVParser(
 				new CSVParserBuilder()
 						.withSeparator(delimiter)
 						.withQuoteChar(quote)
