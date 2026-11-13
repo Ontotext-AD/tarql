@@ -156,19 +156,25 @@ public class TarqlQueryExecution {
 						java.util.Spliterators.spliteratorUnknownSize(it, 0), false))
 				.iterator();
 	}
-	
+
 	public ResultSet execSelect() {
-		//TODO check only first query. right?
-		Query q = getFirstQuery();
+		return execSelect(getFirstQuery());
+	}
+
+	public ResultSet execSelect(Query q) {
 		modifyQuery(q, table);
-		QueryExecution ex = createQueryExecution(q, ModelFactory.createDefaultModel());
+		QueryExecution ex = createQueryExecution(
+				q, ModelFactory.createDefaultModel()
+		);
 		return ex.execSelect();
 	}
 
 	public Query getFirstQuery() {
 		return tq.getQueries().get(0);
 	}
-	
+	public java.util.List<Query> getQueries() {
+		return tq.getQueries();
+	}
 	public void close() {
 		table.close();
 	}

@@ -1,0 +1,15 @@
+PREFIX ex: <http://example.org/>
+
+CONSTRUCT {
+  ?person ex:name ?name .
+}
+WHERE {
+  BIND(IRI(CONCAT("http://example.org/person/", ?id)) AS ?person)
+}
+
+CONSTRUCT {
+  ?person ex:identifier ?id .
+}
+WHERE {
+  BIND(IRI(CONCAT("http://example.org/person/", ?id)) AS ?person)
+}
